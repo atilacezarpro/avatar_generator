@@ -1,0 +1,295 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Avatar</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            text-align: center;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 80%; /* Ampliado */
+            max-width: 600px; /* Responsivo */
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            text-transform: uppercase; /* Transforma o texto em caixa alta */
+        }
+
+h2 {
+    font-size: 14pt;
+    font-weight: 500; /* Alterado para light */
+    text-transform: uppercase; /* Transforma o texto em caixa alta */
+}
+
+        #step2, #step3, #step4 {
+            display: none;
+        }
+
+        input[type="file"] {
+            display: block;
+            margin: 20px auto 10px; /* Espaçamento adicionado */
+            width: 80%;
+            font-size: 16px; /* Aumenta a fonte */
+        }
+
+        .step-button {
+            background-color: #30338F; /* Cor dos botões de etapa */
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 40%; /* Ajustado */
+            font-size: 16px; /* Aumenta a fonte */
+            margin-top: 10px; /* Espaçamento do topo */
+        }
+
+        .step-button:hover {
+            background-color: #1f2177; /* Cor dos botões de etapa ao passar o mouse */
+        }
+
+        #cropContainer {
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+        }
+
+        img {
+            max-width: 100%;
+        }
+
+        #framePreview {
+            margin-top: 20px;
+            display: none;
+            position: relative;
+        }
+
+        canvas {
+            border: 1px solid #ccc;
+            max-width: 100%;
+            height: auto;
+            max-height: 450px; /* Limita a altura */
+        }
+
+        .logo {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 20px; /* Margem ajustada */
+            display: block;
+        }
+
+        .step-label {
+            display: inline-block;
+            width: 35px;
+            height: 35px;
+            line-height: 35px;
+            text-align: center;
+            border-radius: 50%;
+            background-color: #30338F;
+            color: white;
+            margin-right: 10px;
+            font-size: 20px;
+        }
+
+        .step-title {
+            margin-bottom: 20px;
+            text-align: left; /* Alinhamento à esquerda */
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px; /* Espaçamento do topo */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="overlays/logo.png" alt="Logo" class="logo">
+        <h1>GERADOR DE AVATAR</h1> <!-- Texto em caixa alta -->
+
+        <!-- Step 1: Upload Image -->
+        <div id="step1">
+            <h2 class="step-title"><span class="step-label">1</span> Enviar Imagem</h2>
+            <input type="file" id="imageUpload" accept="image/png">
+            <button class="step-button" onclick="goToStep2()">Próximo</button>
+        </div>
+
+        <!-- Step 2: Crop and Resize Image -->
+        <div id="step2">
+            <h2 class="step-title"><span class="step-label">2</span> Redimensionar e Cortar</h2>
+            <div id="cropContainer">
+                <img id="imageToCrop" src="">
+            </div>
+            <button class="step-button" onclick="goToStep1()">Anterior</button> <!-- Botão "Anterior" adicionado -->
+            <button class="step-button" onclick="cropImage()">Próximo</button>
+        </div>
+
+        <!-- Step 3: Select Campaign -->
+        <div id="step3">
+            <h2 class="step-title"><span class="step-label">3</span> Selecionar Campanha</h2>
+            <select id="campaignSelect">
+                <option value="vestibular2025">Vestibular 2025</option>
+               <!-- <option value="univar35anos">Univar 35 anos</option>
+                <option value="topofmind">Top Of Mind</option> -->
+            </select>
+            <button class="step-button" onclick="goToStep2()">Anterior</button>
+            <button class="step-button" onclick="goToStep4()">Próximo</button>
+        </div>
+
+        <!-- Step 4: Preview and Download Instruction -->
+        <div id="step4">
+            <h2 class="step-title"><span class="step-label">4</span> Visualizar e Baixar</h2>
+            <p>Clique com o botão direito do mouse sobre a imagem e selecione "Salvar imagem como..." para baixar.</p>
+            <div id="framePreview">
+                <canvas id="canvas" width="450" height="450"></canvas> <!-- Alterado o tamanho do canvas -->
+            </div>
+            <button class="step-button" onclick="saveImage()">Salvar Imagem</button> <!-- Botão para salvar a imagem -->
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <script>
+function saveImage() {
+    if (!croppedImage) {
+        alert('Por favor, recorte uma imagem primeiro.');
+        return;
+    }
+
+    // Cria um novo canvas para a imagem em 1000x1000px
+    const downloadCanvas = document.createElement('canvas');
+    const downloadCtx = downloadCanvas.getContext('2d');
+    downloadCanvas.width = 1000;
+    downloadCanvas.height = 1000;
+    downloadCtx.drawImage(croppedImage, 0, 0, 1000, 1000);
+
+    // Verifica se o navegador suporta o método `toBlob`
+    if (!downloadCanvas.toBlob) {
+        alert('Seu navegador não suporta salvar imagens diretamente. Por favor, clique com o botão direito do mouse na imagem e selecione "Salvar imagem como...".');
+        return;
+    }
+
+    downloadCanvas.toBlob(function(blob) {
+        // Cria um URL temporário para o blob
+        const url = URL.createObjectURL(blob);
+        
+        // Cria um link para o URL temporário
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'avatar.png'; // Nome do arquivo para download
+        a.click();
+
+        // Limpa o URL temporário
+        URL.revokeObjectURL(url);
+    }, 'image/png');
+}
+
+        let cropper;
+        let croppedImage = null;
+        const imageUpload = document.getElementById('imageUpload');
+        const campaignSelect = document.getElementById('campaignSelect');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const framePreview = document.getElementById('framePreview');
+        const imageToCrop = document.getElementById('imageToCrop');
+
+        const overlays = {
+            vestibular2025: 'overlays/vestibular2025.png',
+            univar35anos: 'overlays/univar35anos.png',
+            topofmind: 'overlays/topofmind.png'
+        };
+
+        function goToStep1() { // Adicionada função para retornar à etapa 1
+            document.getElementById('step2').style.display = 'none';
+            document.getElementById('step1').style.display = 'block';
+        }
+
+        function goToStep2() {
+            if (imageUpload.files.length > 0) {
+                document.getElementById('step1').style.display = 'none';
+                document.getElementById('step2').style.display = 'block';
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imageToCrop.src = e.target.result;
+                    if (cropper) {
+                        cropper.destroy();
+                    }
+                    cropper = new Cropper(imageToCrop, {
+                        aspectRatio: 1,
+                        viewMode: 1
+                    });
+                };
+                reader.readAsDataURL(imageUpload.files[0]);
+            } else {
+                alert('Por favor, envie uma imagem primeiro.');
+            }
+        }
+
+        function cropImage() {
+            croppedImage = cropper.getCroppedCanvas({
+                width: 1000,
+                height: 1000
+            });
+            document.getElementById('step2').style.display = 'none';
+            document.getElementById('step3').style.display = 'block';
+        }
+
+        function goToStep4() {
+            document.getElementById('step3').style.display = 'none';
+            document.getElementById('step4').style.display = 'block';
+            framePreview.style.display = 'block';
+            applyOverlay();
+        }
+
+        campaignSelect.addEventListener('change', applyOverlay);
+
+function applyOverlay() {
+    if (!croppedImage) return;
+    const selectedCampaign = campaignSelect.value;
+    const overlay = new Image();
+    overlay.crossOrigin = "Anonymous"; // Define a propriedade crossOrigin como "Anonymous"
+    overlay.src = overlays[selectedCampaign];
+    overlay.onload = function() {
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = 1000; // Definir a largura para 1000px
+        tempCanvas.height = 1000; // Definir a altura para 1000px
+        tempCtx.drawImage(croppedImage, 0, 0, 1000, 1000);
+        tempCtx.drawImage(overlay, 0, 0, 1000, 1000);
+
+        // Redimensionar o canvas para 450x450px para exibição
+        const displayCanvas = document.createElement('canvas');
+        const displayCtx = displayCanvas.getContext('2d');
+        displayCanvas.width = 450; // Definir a largura para 450px
+        displayCanvas.height = 450; // Definir a altura para 450px
+        displayCtx.drawImage(tempCanvas, 0, 0, 450, 450);
+
+        // Limpar o framePreview antes de adicionar o novo canvas
+        framePreview.innerHTML = '';
+        framePreview.appendChild(displayCanvas);
+
+        // Salva o novo canvas com a imagem e a sobreposição
+        croppedImage = tempCanvas;
+    };
+}
+
+</script>
+</body>
+</html>
